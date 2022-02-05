@@ -4,17 +4,15 @@
 from random import randint
 
 
-class Sim:
-    pod_radius = 400
-    checkpoint_radius = 600
-
-    @staticmethod
-    def race(weigths):
-        return randint(1000, 5000)
-
-
 class Pod:
     def __init__(self, track):
+        self.x = 8000
+        self.y = 4500
+        self.speed = 0
+        self.acc = 0
+        self.angle_acc = 0
+        self.angle_move = 0
+        self.next_checkpoint = 0
         self.track = track
         self.weigths = self.generate_random_weigths()
         self.time_pod = self.track_time_pod()
@@ -23,11 +21,38 @@ class Pod:
         return [1, 1, 0, 1, 1]
 
     def track_time_pod(self):
-        return Sim.race([1, 2])
+        return self.race()
 
     def learn(self):
         self.time_pod = self.time_pod - 1
         return self.time_pod
+
+    def tick(self): #:TODO
+        if self.x > self.track[self.next_checkpoint][0]:
+            self.x -= 1
+        else:
+            self.x += 1
+        if self.y > self.track[self.next_checkpoint][1]:
+            self.y -= 1
+        else:
+            self.y += 1
+
+
+    def collisson(self):
+        if (self.x - self.track[self.next_checkpoint][0]) * (self.x - self.track[self.next_checkpoint][0]) + (
+                self.y - self.track[self.next_checkpoint][1]) * (self.y - self.track[self.next_checkpoint][1]) < 16000:
+            return True
+
+    def race(self):
+        ticks = 0
+        self.next_checkpoint = 0
+        while self.next_checkpoint != len(self.track):
+            ticks += 1
+            self.tick()
+            if self.collisson():
+                print(f'чекпоинт {self.next_checkpoint} пройден')
+                self.next_checkpoint += 1
+        return ticks
 
 
 class GenerateBestGroup:
@@ -63,9 +88,6 @@ class GenerateBestGroup:
 
 
 if __name__ == '__main__':
-    gen = GenerateBestGroup(10, 1000)
+    gen = GenerateBestGroup(2, 5)
     print([i.time_pod for i in gen.best_pods])
-    print([i.learn() for i in gen.best_pods])
-
-
-
+    print([i.track for i in gen.best_pods])
