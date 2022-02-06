@@ -5,22 +5,77 @@ from random import randint
 
 
 class Pod:
-    def __init__(self, track):
+    def __init__(self, track, neural_network):
         self.x = 8000
         self.y = 4500
         self.x_speed = randint(1, 50)
         self.y_speed = randint(1, 50)
+        self.angle_target = 0
+        self.angle_next_target = 0
         self.speed = 0
         self.acc = 0
         self.angle_acc = 0
         self.angle_move = 0
         self.next_checkpoint = 0
         self.track = track
+        self.neural_network = neural_network
+        self.input = [self.angle_target,
+                      self.angle_next_target,
+                      self.speed,
+                      self.angle_move,
+                      10  # нейрон смещения
+                      ]
+        self.output = [self.acc,
+                       self.angle_acc]
         self.weigths = self.generate_random_weigths()
         self.time_pod = self.race()
 
     def generate_random_weigths(self):  # Заглушка.. генерирует случайные веса для всех нейронов
-        return [1, 1, 0, 1, 1]
+        """ нейроны первого слоя умножаются на  веса входящих данных
+        нейроны второго слоя умножаются на нейроны предыдущего
+        нейроны выходящего слоя умножаются на нейроны последнего слоя
+        из нейронки вида
+        [   [inputs, b       ],
+            [x, x, x, x, b],
+            [x, x, x, x, b],
+            [x, x, x, x, b],
+            [outputs      ]  ]
+        должен получиться список списков весов вида
+        [  [   [x, x, x, x, x], [x, x, x, x, x], [x, x, x, x, x], [x, x, x, x, x], [x, x, x, x, x]   ],
+           [   [x, x, x, x, x], [x, x, x, x, x], [x, x, x, x, x], [x, x, x, x, x], [x, x, x, x, x]   ],
+           [   [x, x, x, x, x], [x, x, x, x, x], [x, x, x, x, x], [x, x, x, x, x], [x, x, x, x, x]   ],
+           [   [x, x, x, x, x], [x, x, x, x, x], [x, x, x, x, x], [x, x, x, x, x], [x, x, x, x, x]   ],
+           [   [x, x, x, x, x], [x, x, x, x, x]                                                      ]  ]
+        """
+        weigths = []
+        nn = []
+        # добавляем входящий и выходящий слои
+        nn.insert(0, self.input)
+        nn.append(self.output)
+        for i in range(1, len(nn)):  # начиная со второго слоя
+            weigths.append([])  # для каждого нейрона кроме нейрона смещения
+        return weigths
+
+    def neuron_calc(self, list_neurons, list_weigths):  # OK
+        # перемножаем нейроны предыдущего ряда с весами, складываем и пропускаем через функцию
+        neuron = 0
+        for i in range(len(list_neurons)):
+            neuron += list_neurons[i] * list_weigths[i]
+        #  функция срабатывания
+        if (neuron / 1 + abs(neuron)) > 2:
+            return 1
+        return 0
+
+    def tick_nn(self):  # нужна проверка с весами
+        # вычисляем нейроны первого слоя
+        for i in range(1, len(self.neural_network)):  # распаковываем каждый слой начиная со второго
+            for j in range(len(self.neural_network[i]) - 1):  # берем по очереди каждый нейрон кроме нейрона смещения
+                # даем функуие предыдущий слой и нужный список весов
+                self.neural_network[i][j] = self.neuron_calc(self.neural_network[i - 1], self.weigths[i - 1][j])
+
+        acc = self.neural_network[0]
+        angle = self.neural_network[1]
+        self.output = [acc, angle, "нужный элемент списка"]
 
     def learn(self):  # Заглушка.. аналог градиентного спуска
         self.x_speed += randint(-2, 2)
@@ -66,15 +121,15 @@ class GenerateBestGroup:
         self.size_of_group = size_of_group
         self.checkpoints = 10
         self.track = self.create_track()
-        self.best_pods = self.find_best_pods()
         self.layers = layers
         self.neurons = neurons
         self.neural_network = self.create_neural_networks()
+        self.best_pods = self.find_best_pods()
 
     def create_neural_networks(self):  # OK
         nn = []
         for i in range(self.layers):
-            nn.append([0 for j in range(self.neurons)])
+            nn.append([1 for j in range(self.neurons)])
         return nn
 
     def create_track(self):  # OK
@@ -86,13 +141,13 @@ class GenerateBestGroup:
         return a
 
     def find_first_pods(self):  # OK
-        first_pods = [Pod(self.track) for i in range(self.size_of_best_group)]
+        first_pods = [Pod(self.track, self.neural_network) for i in range(self.size_of_best_group)]
         return self.sort_best_pods(first_pods)
 
     def find_best_pods(self):  # OK
         best_pods = self.find_first_pods()
         for i in range(self.size_of_best_group, self.size_of_group):
-            pod = Pod(self.track)
+            pod = Pod(self.track, self.neural_network)
             if pod.time_pod < best_pods[0].time_pod:
                 best_pods[0] = pod
                 self.sort_best_pods(best_pods)
