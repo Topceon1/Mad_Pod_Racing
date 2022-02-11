@@ -48,12 +48,15 @@ class Pod:
            [   [x, x, x, x, x], [x, x, x, x, x]                                                      ]  ]
         """
         weigths = []
-        nn = []
+        nn = self.neural_network
         # добавляем входящий и выходящий слои
         nn.insert(0, self.input)
         nn.append(self.output)
+        for i in range(len(nn) - 1):
+            weigths.append([])
         for i in range(1, len(nn)):  # начиная со второго слоя
-            weigths.append([])  # для каждого нейрона кроме нейрона смещения
+            for j in range(len(i)):  #
+                weigths[i].append([k for k in j])  # для каждого нейрона кроме нейрона смещения
         return weigths
 
     def neuron_calc(self, list_neurons, list_weigths):  # OK
