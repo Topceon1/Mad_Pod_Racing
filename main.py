@@ -2,6 +2,10 @@
  нейросеть для поиска лучшего варианта болида на сайте https://www.codingame.com/ в игре 'Mad Pod Racing'
  """
 from random import randint
+import copy
+
+import geerate_weigths as gw
+import sum_matrix as sm
 
 
 class Pod:
@@ -18,67 +22,32 @@ class Pod:
         self.angle_move = 0
         self.next_checkpoint = 0
         self.track = track
-        self.neural_network = neural_network
         self.input = [self.angle_target,
                       self.angle_next_target,
                       self.speed,
                       self.angle_move,
-                      10  # нейрон смещения
+                      100  # нейрон смещения
                       ]
         self.output = [self.acc,
-                       self.angle_acc]
-        self.weigths = self.generate_random_weigths()
+                       self.angle_acc,
+                       "dont del"]
+        self.neural_network = copy.deepcopy(neural_network)  # [[[1], [5], [5], [5]], [[1], [5], [5], [5]]]
         self.time_pod = self.race()
+        self.neural_network_assebly()
+        self.weigths = self.generate_random_weigths()
 
-    def generate_random_weigths(self):  # Заглушка.. генерирует случайные веса для всех нейронов
-        """ нейроны первого слоя умножаются на  веса входящих данных
-        нейроны второго слоя умножаются на нейроны предыдущего
-        нейроны выходящего слоя умножаются на нейроны последнего слоя
-        из нейронки вида
-        [   [inputs, b       ],
-            [x, x, x, x, b],
-            [x, x, x, x, b],
-            [x, x, x, x, b],
-            [outputs      ]  ]
-        должен получиться список списков весов вида
-        [  [   [x, x, x, x, x], [x, x, x, x, x], [x, x, x, x, x], [x, x, x, x, x], [x, x, x, x, x]   ],
-           [   [x, x, x, x, x], [x, x, x, x, x], [x, x, x, x, x], [x, x, x, x, x], [x, x, x, x, x]   ],
-           [   [x, x, x, x, x], [x, x, x, x, x], [x, x, x, x, x], [x, x, x, x, x], [x, x, x, x, x]   ],
-           [   [x, x, x, x, x], [x, x, x, x, x], [x, x, x, x, x], [x, x, x, x, x], [x, x, x, x, x]   ],
-           [   [x, x, x, x, x], [x, x, x, x, x]                                                      ]  ]
-        """
-        weigths = []
-        nn = self.neural_network
-        # добавляем входящий и выходящий слои
-        nn.insert(0, self.input)
-        nn.append(self.output)
-        for i in range(len(nn) - 1):
-            weigths.append([])
-        for i in range(1, len(nn)):  # начиная со второго слоя
-            for j in range(len(i)):  #
-                weigths[i].append([k for k in j])  # для каждого нейрона кроме нейрона смещения
-        return weigths
+    def generate_random_weigths(self):  # Проверить на работоспособность
+        return gw.generate_weigths(self.neural_network, randint, 100000)
 
-    def neuron_calc(self, list_neurons, list_weigths):  # OK
-        # перемножаем нейроны предыдущего ряда с весами, складываем и пропускаем через функцию
-        neuron = 0
-        for i in range(len(list_neurons)):
-            neuron += list_neurons[i] * list_weigths[i]
-        #  функция срабатывания
-        if (neuron / 1 + abs(neuron)) > 2:
-            return 1
-        return 0
+    def neural_network_assebly(self):
+        self.neural_network.append(self.output)
+        self.neural_network.insert(0, self.input)
 
-    def tick_nn(self):  # нужна проверка с весами
-        # вычисляем нейроны первого слоя
-        for i in range(1, len(self.neural_network)):  # распаковываем каждый слой начиная со второго
-            for j in range(len(self.neural_network[i]) - 1):  # берем по очереди каждый нейрон кроме нейрона смещения
-                # даем функуие предыдущий слой и нужный список весов
-                self.neural_network[i][j] = self.neuron_calc(self.neural_network[i - 1], self.weigths[i - 1][j])
+    def neuron_calc(self):
+        return sm.sum_matrix(self.neural_network, self.weigths)
 
-        acc = self.neural_network[0]
-        angle = self.neural_network[1]
-        self.output = [acc, angle, "нужный элемент списка"]
+    def tick_nn(self):
+        pass
 
     def learn(self):  # Заглушка.. аналог градиентного спуска
         self.x_speed += randint(-2, 2)
@@ -119,7 +88,7 @@ class Pod:
 class GenerateBestGroup:
     """класс создаёт нужное количество боллидов и выбирает группу из заданного количества лучших"""
 
-    def __init__(self, size_of_best_group: int, size_of_group: int, layers, neurons):
+    def __init__(self, size_of_best_group: int, size_of_group: int, layers: int, neurons: int):
         self.size_of_best_group = size_of_best_group
         self.size_of_group = size_of_group
         self.checkpoints = 10
@@ -132,7 +101,7 @@ class GenerateBestGroup:
     def create_neural_networks(self):  # OK
         nn = []
         for i in range(self.layers):
-            nn.append([1 for j in range(self.neurons)])
+            nn.append([100 for j in range(self.neurons)])
         return nn
 
     def create_track(self):  # OK
@@ -158,10 +127,13 @@ class GenerateBestGroup:
 
 
 if __name__ == '__main__':
-    gen = GenerateBestGroup(10, 100, layers=3, neurons=5)
-    print([i.time_pod for i in gen.best_pods])
-    for i in gen.best_pods:
-        for j in range(10):
-            i.learn()
-    print([i.time_pod for i in gen.best_pods])
+    gen = GenerateBestGroup(10, 100, layers=5, neurons=5)
+    # print([i.time_pod for i in gen.best_pods])
+    # for i in gen.best_pods:
+    #     for j in range(10):
+    #         i.learn()
+    # print([i.time_pod for i in gen.best_pods])
     print(gen.neural_network)
+    print(gen.best_pods[0].neural_network)
+    print(gen.best_pods[0].weigths)
+    # print(gen.best_pods[0].neuron_calc())
