@@ -136,4 +136,4 @@ if __name__ == '__main__':
     print(gen.neural_network)
     print(gen.best_pods[0].neural_network)
     print(gen.best_pods[0].weigths)
-    # print(gen.best_pods[0].neuron_calc())
+    print(gen.best_pods[0].neuron_calc())
