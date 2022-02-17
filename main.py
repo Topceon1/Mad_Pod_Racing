@@ -14,7 +14,7 @@ class Pod:
         self.y = 4500
         self.x_speed = randint(1, 50)
         self.y_speed = randint(1, 50)
-        self.angle_target = 0
+        self.angle_target = 20
         self.angle_next_target = 0
         self.speed = 0
         self.acc = 0
@@ -29,25 +29,21 @@ class Pod:
                       100  # нейрон смещения
                       ]
         self.output = [self.acc,
-                       self.angle_acc,
-                       "dont del"]
-        self.neural_network = copy.deepcopy(neural_network)  # [[[1], [5], [5], [5]], [[1], [5], [5], [5]]]
+                       self.angle_acc]
+        self.neural_network = copy.deepcopy(neural_network)
         self.time_pod = self.race()
         self.neural_network_assebly()
         self.weigths = self.generate_random_weigths()
 
-    def generate_random_weigths(self):  # Проверить на работоспособность
+    def generate_random_weigths(self):  # OK
         return gw.generate_weigths(self.neural_network, randint, 100000)
 
-    def neural_network_assebly(self):
+    def neural_network_assebly(self):  # OK
         self.neural_network.append(self.output)
         self.neural_network.insert(0, self.input)
 
-    def neuron_calc(self):
+    def neuron_calc(self):  # OK
         return sm.sum_matrix(self.neural_network, self.weigths)
-
-    def tick_nn(self):
-        pass
 
     def learn(self):  # Заглушка.. аналог градиентного спуска
         self.x_speed += randint(-2, 2)
@@ -67,6 +63,15 @@ class Pod:
             self.y -= self.y_speed
         else:
             self.y += self.y_speed
+
+    def tick_nn(self):
+        """ для отработки симуляции потребуются
+            положение болида (x,y)
+            направление болида (vx,vy)
+            направление до следующего чекпоинта
+            расстояние до следующего чекпоинта
+        """
+        pass
 
     def collisson(self) -> bool:  # OK
         if (self.x - self.track[self.next_checkpoint][0]) * (self.x - self.track[self.next_checkpoint][0]) + (
@@ -127,13 +132,9 @@ class GenerateBestGroup:
 
 
 if __name__ == '__main__':
-    gen = GenerateBestGroup(10, 100, layers=5, neurons=5)
-    # print([i.time_pod for i in gen.best_pods])
+    gen = GenerateBestGroup(10, 100, layers=8, neurons=8)
+    print([i.time_pod for i in gen.best_pods])
     # for i in gen.best_pods:
     #     for j in range(10):
     #         i.learn()
     # print([i.time_pod for i in gen.best_pods])
-    print(gen.neural_network)
-    print(gen.best_pods[0].neural_network)
-    print(gen.best_pods[0].weigths)
-    print(gen.best_pods[0].neuron_calc())
