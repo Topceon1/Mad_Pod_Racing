@@ -11,14 +11,15 @@ import game_simulation as gs
 
 class Pod:
     def __init__(self, track, neural_network):
-        self.x = 800
-        self.y = 450
+        self.pod_track = []
+        self.x = 8000
+        self.y = 4500
         self.v_x = 0
         self.v_y = 0
-        self.angle_target = 20
+        self.angle_target = 0
         self.angle_next_target = 0
         self.speed = 0
-        self.acc = 3
+        self.acc = 30
         self.angle_acc = 0
         self.angle_move = 0
         self.next_checkpoint = 0
@@ -32,9 +33,10 @@ class Pod:
         self.output = [self.acc,
                        self.angle_acc]
         self.neural_network = copy.deepcopy(neural_network)
-        self.time_pod = self.race()
         self.neural_network_assebly()
         self.weigths = self.generate_random_weigths()
+        self.neuron_calc()
+        self.time_pod = self.race()
 
     def generate_random_weigths(self):  # OK
         return gw.generate_weigths(self.neural_network, randint, 100000)
@@ -44,7 +46,7 @@ class Pod:
         self.neural_network.insert(0, self.input)
 
     def neuron_calc(self):  # OK
-        return sm.sum_matrix(self.neural_network, self.weigths)
+        self.neural_network = sm.sum_matrix(self.neural_network, self.weigths)
 
     def learn(self):  # Заглушка.. аналог градиентного спуска
         self.v_x += randint(-2, 2)
@@ -66,12 +68,14 @@ class Pod:
             self.y += self.v_y
 
     def tick(self):
-        self.angle_move = gs.max_angle(self.angle_move, gs.target_angle(self.x, self.y, self.track[self.next_checkpoint][0], self.track[self.next_checkpoint][1]))
+        self.angle_move = gs.max_angle(self.angle_move,
+                                       gs.target_angle(self.x, self.y, self.track[self.next_checkpoint][0],
+                                                       self.track[self.next_checkpoint][1]))
         self.x, self.y, self.v_x, self.v_y = gs.simulate(self.x, self.y, self.v_x, self.v_y, self.acc, self.angle_move)
 
     def collisson(self) -> bool:  # OK
         if (self.x - self.track[self.next_checkpoint][0]) * (self.x - self.track[self.next_checkpoint][0]) + (
-                self.y - self.track[self.next_checkpoint][1]) * (self.y - self.track[self.next_checkpoint][1]) < 1600:
+                self.y - self.track[self.next_checkpoint][1]) * (self.y - self.track[self.next_checkpoint][1]) < 16000:
             return True
 
     def race(self):  # OK
@@ -79,6 +83,7 @@ class Pod:
         turns = 0
         self.next_checkpoint = 0
         while self.next_checkpoint != len(self.track):
+            self.neuron_calc()
             turns += 1
             if turns > 300:
                 return 9999999999
@@ -87,6 +92,10 @@ class Pod:
             if self.collisson():
                 turns = 0
                 self.next_checkpoint += 1
+            x = self.x
+            y = self.y
+            vn = [x, y]
+            self.pod_track.append(vn)
         return ticks
 
 
@@ -110,7 +119,7 @@ class GenerateBestGroup:
         return nn
 
     def create_track(self):  # OK
-        return [[randint(200, 1500), randint(200, 800)] for i in range(self.checkpoints)]
+        return [[randint(1000, 15000), randint(1000, 8000)] for i in range(self.checkpoints)]
 
     @staticmethod
     def sort_best_pods(a: list):  # OK
@@ -132,33 +141,41 @@ class GenerateBestGroup:
 
 
 if __name__ == '__main__':
-    gen = GenerateBestGroup(10, 1000, layers=8, neurons=8)
-    print([i.time_pod for i in gen.best_pods])
+    gen = GenerateBestGroup(2, 10, layers=8, neurons=8)
+    # print([i.time_pod for i in gen.best_pods])
+    # print(gen.best_pods[0].pod_track)
     # for i in gen.best_pods:
     #     for j in range(10):
     #         i.learn()
     # print([i.time_pod for i in gen.best_pods])
-"""
+    # """
     import pygame
 
+    SCALE = 10
+    POD_RADIUS = 400
+    CHECK_RADIUS = 600
+    FPS = 30
+    GAME_FRAME_SIZE = [16000, 9000]
+
     pygame.init()
-    sc = pygame.display.set_mode((1200, 800))
+    sc = pygame.display.set_mode((list(map(lambda k: k / SCALE, GAME_FRAME_SIZE))))
     clock = pygame.time.Clock()
-    FPS = 10
     gen.best_pods[0].next_checkpoint = 0
-    while True:
+    pod_max_step = max(gen.best_pods, key=lambda i: i.time_pod)  # находим самый долгий болид чтобы увидеть весь путь
+    step_max = pod_max_step.time_pod - 1
+    step = 0
+    while step < step_max:
+        step += 1
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 exit()
         sc.fill((0, 0, 0))
 
-        if gen.best_pods[0].next_checkpoint != len(gen.best_pods[0].track):
-            gen.best_pods[0].tick()
-            if gen.best_pods[0].collisson():
-                gen.best_pods[0].next_checkpoint += 1
-
-        pygame.draw.circle(sc, (255, 255, 255), (gen.best_pods[0].x, gen.best_pods[0].y), 10)
         for i in gen.track:
-            pygame.draw.circle(sc, (2, 255, 255), (i), 10)
+            pygame.draw.circle(sc, (2, 255, 255), (list(map(lambda k: k / SCALE, i))), CHECK_RADIUS / SCALE)
+
+        for i in gen.best_pods:
+            pygame.draw.circle(sc, (255, 255, 255), (list(map(lambda k: k / SCALE, i.pod_track[step]))), POD_RADIUS / SCALE)
         pygame.display.flip()
-        clock.tick(FPS)"""
+        clock.tick(FPS)
+        # """
