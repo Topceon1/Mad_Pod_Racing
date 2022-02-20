@@ -19,13 +19,15 @@ class Pod:
         self.angle_target = 0
         self.angle_next_target = 0
         self.speed = 0
-        self.acc = 30
+        self.acc = 60
         self.angle_acc = 0
         self.angle_move = 0
+        self.check_distance = 0
         self.next_checkpoint = 0
         self.track = track
-        self.input = [self.angle_target,
-                      self.angle_next_target,
+        self.input = [self.angle_target,  # посчитан
+                      # self.angle_next_target,
+                      self.check_distance,  # посчитан
                       self.speed,
                       self.angle_move,
                       100  # нейрон смещения
@@ -45,8 +47,9 @@ class Pod:
         self.neural_network.append(self.output)
         self.neural_network.insert(0, self.input)
 
-    def neuron_calc(self):  # OK
-        self.neural_network = sm.sum_matrix(self.neural_network, self.weigths)
+    def neuron_calc(self):  # OK меняет скорость и угол на новые
+        nn = sm.sum_matrix(self.neural_network, self.weigths)
+        self.acc = nn[-1][0]
 
     def learn(self):  # Заглушка.. аналог градиентного спуска
         self.v_x += randint(-2, 2)
@@ -57,25 +60,23 @@ class Pod:
         if new_track_time < self.time_pod:
             self.time_pod = new_track_time
 
-    def tick2(self):  # Заглушка.. переделать на симуляцпю настоящей игры
-        if self.x > self.track[self.next_checkpoint][0]:
-            self.x -= self.v_x
-        else:
-            self.x += self.v_x
-        if self.y > self.track[self.next_checkpoint][1]:
-            self.y -= self.v_y
-        else:
-            self.y += self.v_y
-
     def tick(self):
+        #  определяем расстояние до следующей цели и скорость
+        self.check_distance = int(gs.dist([self.x, self.y], self.track[self.next_checkpoint]))
+        self.speed = int(gs.pod_speed(self.v_x, self.v_y))
+        #  определяем угол до цели
+        self.angle_target = gs.target_angle(self.x, self.y, self.track[self.next_checkpoint][0],
+                                            self.track[self.next_checkpoint][1])
+        #  расчитывается угол следующего положения. На входе направление указанное нейронкой(доделать)
         self.angle_move = gs.max_angle(self.angle_move,
                                        gs.target_angle(self.x, self.y, self.track[self.next_checkpoint][0],
                                                        self.track[self.next_checkpoint][1]))
+        #  симуляция получает входные данные и выдает выходные
         self.x, self.y, self.v_x, self.v_y = gs.simulate(self.x, self.y, self.v_x, self.v_y, self.acc, self.angle_move)
 
     def collisson(self) -> bool:  # OK
         if (self.x - self.track[self.next_checkpoint][0]) * (self.x - self.track[self.next_checkpoint][0]) + (
-                self.y - self.track[self.next_checkpoint][1]) * (self.y - self.track[self.next_checkpoint][1]) < 16000:
+                self.y - self.track[self.next_checkpoint][1]) * (self.y - self.track[self.next_checkpoint][1]) < 360000:
             return True
 
     def race(self):  # OK
@@ -85,7 +86,7 @@ class Pod:
         while self.next_checkpoint != len(self.track):
             self.neuron_calc()
             turns += 1
-            if turns > 300:
+            if turns > 100:
                 return 9999999999
             ticks += 1
             self.tick()
@@ -95,7 +96,7 @@ class Pod:
             x = self.x
             y = self.y
             vn = [x, y]
-            self.pod_track.append(vn)
+            self.pod_track.append(vn)  # формируем список для визуализации
         return ticks
 
 
@@ -141,30 +142,35 @@ class GenerateBestGroup:
 
 
 if __name__ == '__main__':
-    gen = GenerateBestGroup(2, 10, layers=8, neurons=8)
-    # print([i.time_pod for i in gen.best_pods])
-    # print(gen.best_pods[0].pod_track)
-    # for i in gen.best_pods:
-    #     for j in range(10):
-    #         i.learn()
-    # print([i.time_pod for i in gen.best_pods])
-    # """
-    import pygame
-
-    SCALE = 10
+    SCALE = 30
     POD_RADIUS = 400
     CHECK_RADIUS = 600
     FPS = 30
     GAME_FRAME_SIZE = [16000, 9000]
+    #  созаем "FROM_PODS" болидов и выбираем "BEST_PODS" лучших из них
+    BEST_PODS = 50
+    FROM_PODS = 100
+    gen = GenerateBestGroup(BEST_PODS, FROM_PODS, layers=4, neurons=4)
+    print([i.time_pod for i in gen.best_pods])
+    # """
+    import pygame
 
     pygame.init()
     sc = pygame.display.set_mode((list(map(lambda k: k / SCALE, GAME_FRAME_SIZE))))
     clock = pygame.time.Clock()
     gen.best_pods[0].next_checkpoint = 0
-    pod_max_step = max(gen.best_pods, key=lambda i: i.time_pod)  # находим самый долгий болид чтобы увидеть весь путь
+    pod_max_step = min(gen.best_pods, key=lambda i: i.time_pod)  # находим самый долгий болид чтобы увидеть весь путь
     step_max = pod_max_step.time_pod - 1
     step = 0
-    while step < step_max:
+
+
+    def pod_ticks_xy(f_step: int, b: list):
+        if f_step > len(b) - 1:
+            return b[-1]
+        return b[f_step]
+
+
+    while True:
         step += 1
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -172,10 +178,11 @@ if __name__ == '__main__':
         sc.fill((0, 0, 0))
 
         for i in gen.track:
-            pygame.draw.circle(sc, (2, 255, 255), (list(map(lambda k: k / SCALE, i))), CHECK_RADIUS / SCALE)
+            pygame.draw.circle(sc, (111, 111, 111), (list(map(lambda k: k / SCALE, i))), CHECK_RADIUS / SCALE)
 
         for i in gen.best_pods:
-            pygame.draw.circle(sc, (255, 255, 255), (list(map(lambda k: k / SCALE, i.pod_track[step]))), POD_RADIUS / SCALE)
+            pygame.draw.circle(sc, (255, 255, 255), (list(map(lambda k: k / SCALE, pod_ticks_xy(step, i.pod_track)))),
+                               POD_RADIUS / SCALE)
         pygame.display.flip()
         clock.tick(FPS)
         # """

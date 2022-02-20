@@ -7,6 +7,14 @@ def target_angle(pod_x, pod_y, ch_x, ch_y):
     return math.atan2(ch_y - pod_y, ch_x - pod_x)
 
 
+def dist(a, b):
+    return math.sqrt((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2)
+
+
+def pod_speed(a, b):
+    return math.sqrt(a ** 2 + b ** 2)
+
+
 def max_angle(a, b):
     n = a + (b - a)
     if b - a > math.pi * 0.1:
@@ -42,6 +50,7 @@ if __name__ == '__main__':
     assert max_angle(2, -2) == 2 + math.pi * 0.1
     assert max_angle(1, 1.1) == 1.1
     assert max_angle(1.1, 1) == 1
+    assert dist([6, 8], [3, 4]) == 5
 
     import pygame
 
