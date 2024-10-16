@@ -1,21 +1,3 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <title>Пример оформления</title>
-    <style>
-        h1 {
-            color: blue;
-            font-size: 24px;
-        }
-        p {
-            color: green;
-            font-weight: bold;
-        }
-    </style>
-</head>
-<body>
-    <h1>Заголовок с синим цветом</h1>
-    <p>Зелёный жирный текст</p>
-</body>
-</html>
+<h1 align="center" style="color:blue;">Центрированный синий заголовок</h1>
+<p style="color:green; font-size:18px;">Зелёный текст с размером шрифта 18px</p>
+
